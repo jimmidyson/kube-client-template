@@ -14,6 +14,15 @@
   name = "k8s.io/client-go"
   version = "v6.0.0"
 
+[[constraint]]
+  name = "go.uber.org/zap"
+  branch = "master"
+
+[[override]]
+  name = "github.com/golang/glog"
+  source = "github.com/istio/glog"
+  branch = "master"
+
 [prune]
   go-tests = true
   unused-packages = true

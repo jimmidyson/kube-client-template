@@ -26,7 +26,8 @@
   branch = "master"
   name = "github.com/golang/glog"
   packages = ["."]
-  revision = "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
+  revision = "fa3e31d79e95f5f1ca007ccb770653bbb16c5b1f"
+  source = "github.com/istio/glog"
 
 [[projects]]
   branch = "master"
@@ -44,7 +45,7 @@
   branch = "master"
   name = "github.com/google/btree"
   packages = ["."]
-  revision = "316fb6d3f031ae8f4d457c6c5186b9e3ded70435"
+  revision = "e89373fe6b4a7413d7acd6da1725b83ef713e6e4"
 
 [[projects]]
   branch = "master"
@@ -194,6 +195,31 @@
   revision = "aafc9e6bc7b7bb53ddaa75a5ef49a17d6e654be5"
 
 [[projects]]
+  name = "go.uber.org/atomic"
+  packages = ["."]
+  revision = "8474b86a5a6f79c443ce4b2992817ff32cf208b8"
+  version = "v1.3.1"
+
+[[projects]]
+  name = "go.uber.org/multierr"
+  packages = ["."]
+  revision = "3c4937480c32f4c13a875a1829af76c98ca3d40a"
+  version = "v1.1.0"
+
+[[projects]]
+  branch = "master"
+  name = "go.uber.org/zap"
+  packages = [
+    ".",
+    "buffer",
+    "internal/bufferpool",
+    "internal/color",
+    "internal/exit",
+    "zapcore"
+  ]
+  revision = "f85c78b1dd998214c5f2138155b320a4a43fbe36"
+
+[[projects]]
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
@@ -217,7 +243,7 @@
     "unix",
     "windows"
   ]
-  revision = "af50095a40f9041b3b38960738837185c26e9419"
+  revision = "ef802241c90f84d84d644a2d8d0de8ee96038c9c"
 
 [[projects]]
   branch = "master"
@@ -285,7 +311,7 @@
     "storage/v1alpha1",
     "storage/v1beta1"
   ]
-  revision = "fbe336854453ac8e27bffe14e1964555245cbd05"
+  revision = "1114b579fde8730f5cffa8363506064eb082846a"
 
 [[projects]]
   branch = "master"
@@ -385,6 +411,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1d34e91befac77190a5d8c1a43110ae70a13fc728c89878c7bbe73f122fe5ded"
+  inputs-digest = "a2a1917863891ebba731f0f22239d020cce35203c6787470c583e9f098763fc3"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -15,12 +15,16 @@
 package cmd
 
 import (
+	"flag"
 	"fmt"
 	"os"
+
+	"go.uber.org/zap"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"go.uber.org/zap/zapcore"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -28,11 +32,12 @@ import (
 
 var (
 	cfgFile                   string
-	interactive               bool
+	logLevel                  = zapcore.InfoLevel
 	kubeConfigFile            string
 	kubeClientConfigOverrides = &clientcmd.ConfigOverrides{}
 
 	kubeClient *kubernetes.Clientset
+	logger     *zap.Logger
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -46,26 +51,34 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		logConfig := zap.NewProductionConfig()
+		logConfig.Level.SetLevel(logLevel)
+		logConfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+		logConfig.EncoderConfig.EncodeDuration = zapcore.StringDurationEncoder
+		logger, _ = logConfig.Build()
+		_ = zap.ReplaceGlobals(logger)
+		_ = zap.RedirectStdLog(logger)
+		defer logger.Sync()
+
 		kubeConfigLoader := clientcmd.NewDefaultClientConfigLoadingRules()
 		if kubeConfigFile != "" {
+			logger.Info("using specified kube config file", zap.String("file", kubeConfigFile))
 			kubeConfigLoader.ExplicitPath = kubeConfigFile
 		}
-		var kubeConfig clientcmd.ClientConfig
-		if interactive {
-			kubeConfig = clientcmd.NewInteractiveDeferredLoadingClientConfig(kubeConfigLoader, kubeClientConfigOverrides, os.Stdin)
-		} else {
-			kubeConfig = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(kubeConfigLoader, kubeClientConfigOverrides)
-		}
-
+		kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(kubeConfigLoader, kubeClientConfigOverrides)
 		restConfig, err := kubeConfig.ClientConfig()
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			logger.Fatal("failed to get REST config", zap.Error(err))
 		}
 		kubeClient = kubernetes.NewForConfigOrDie(restConfig)
 
 		namespace, _, _ := kubeConfig.Namespace()
-		fmt.Println(kubeClient.Core().Pods(namespace).List(metav1.ListOptions{}))
+		logger.Debug("running against namespace", zap.String("namespace", namespace))
+		pods, err := kubeClient.Core().Pods(namespace).List(metav1.ListOptions{})
+		if err != nil {
+			logger.Fatal("failed to list pods", zap.Error(err))
+		}
+		logger.Info("returned pods", zap.Stringer("pods", pods))
 	},
 }
 
@@ -82,15 +95,15 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.kube-client-template.yaml)")
-	rootCmd.PersistentFlags().BoolVarP(&interactive, "interactive", "i", false, "interactive")
+	rootCmd.PersistentFlags().AddGoFlag(&flag.Flag{
+		Name:     "log-level",
+		Usage:    "log level",
+		Value:    &logLevel,
+		DefValue: zapcore.InfoLevel.String(),
+	})
 
-	clientcmd.BindOverrideFlags(kubeClientConfigOverrides, rootCmd.PersistentFlags(), clientcmd.RecommendedConfigOverrideFlags(""))
-	_, err := homedir.Dir()
-	if err == nil {
-		rootCmd.PersistentFlags().StringVar(&kubeConfigFile, clientcmd.RecommendedConfigPathFlag, clientcmd.RecommendedHomeFile, "(optional) absolute path to the kubeconfig file")
-	} else {
-		rootCmd.PersistentFlags().StringVar(&kubeConfigFile, clientcmd.RecommendedConfigPathFlag, "", "(optional) absolute path to the kubeconfig file")
-	}
+	clientcmd.BindOverrideFlags(kubeClientConfigOverrides, rootCmd.PersistentFlags(), clientcmd.RecommendedConfigOverrideFlags("kubernetes-"))
+	rootCmd.PersistentFlags().StringVar(&kubeConfigFile, "kubernetes-config", "", "(optional) absolute path to the kubeconfig file")
 }
 
 // initConfig reads in config file and ENV variables if set.
