@@ -16,14 +16,13 @@ package cmd
 
 import (
 	"flag"
-	"fmt"
-	"os"
 
-	"go.uber.org/zap"
+	"github.com/spf13/pflag"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -50,6 +49,7 @@ examples and usage of using your application. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
+	SilenceUsage: true,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		logConfig := zap.NewProductionConfig()
 		logConfig.Level.SetLevel(logLevel)
@@ -86,8 +86,7 @@ to quickly create a Cobra application.`,
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		logger.Fatal("root command failed", zap.Error(err))
 	}
 }
 
@@ -102,8 +101,14 @@ func init() {
 		DefValue: zapcore.InfoLevel.String(),
 	})
 
-	clientcmd.BindOverrideFlags(kubeClientConfigOverrides, rootCmd.PersistentFlags(), clientcmd.RecommendedConfigOverrideFlags("kubernetes-"))
-	rootCmd.PersistentFlags().StringVar(&kubeConfigFile, "kubernetes-config", "", "(optional) absolute path to the kubeconfig file")
+	kubernetesFlagSet := pflag.NewFlagSet("Kubernetes configuration", pflag.ContinueOnError)
+	clientcmd.BindOverrideFlags(kubeClientConfigOverrides, kubernetesFlagSet, clientcmd.RecommendedConfigOverrideFlags("kubernetes-"))
+	kubernetesFlagSet.StringVar(&kubeConfigFile, "kubernetes-config", "", "(optional) absolute path to the kubeconfig file")
+	kubernetesFlagSet.VisitAll(func(f *pflag.Flag) {
+		_ = kubernetesFlagSet.MarkHidden(f.Name)
+	})
+
+	rootCmd.PersistentFlags().AddFlagSet(kubernetesFlagSet)
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -125,6 +130,6 @@ func initConfig() {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+		logger.Info("loaded config from file", zap.String("file", viper.ConfigFileUsed()))
 	}
 }
